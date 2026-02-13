@@ -59,20 +59,55 @@ def mock_create_transaction(request):
     
     try:
         body = json.loads(request.body)
-        required = ['process_token', 'user_id', 'full_name', 'amount']
-        # Note: 'amount' might not be in the request body based on user prompt sample, 
-        # but user put it in the second block. I will just check basics.
         
-        if not body.get('process_token'):
-             return JsonResponse({'error': 'Missing process_token'}, status=400)
+        # --- SCENARIO MATCHING FOR TESTING ---
+        # 1. Blocked User Simulation
+        if body.get('user_id') == 'BLOCKED_USER':
+            return JsonResponse({
+                "status": "failed",
+                "error_code": "USER_BANNED",
+                "message": "This user is restricted from making transactions."
+            }, status=403)
 
-        # Mock Logic
+        # 2. Maintenance Mode Simulation (Specific Amount)
+        if str(body.get('amount')) == '503':
+            return JsonResponse({
+                "status": "error",
+                "message": "Payment system is currently under maintenance."
+            }, status=503)
+
+        # 3. Invalid Amount Logic
+        try:
+            amt = float(body.get('amount', 0))
+            if amt <= 0:
+                return JsonResponse({
+                    "status": "failed", 
+                    "error_code": "INVALID_AMOUNT", 
+                    "message": "Amount must be greater than zero."
+                }, status=400)
+        except:
+            pass # Let it fail later or handle as string
+
+        # Support both Token-based and Direct modes
+        if body.get('process_token'):
+            # Token Mode
+            pass
+        elif body.get('amount') and body.get('user_id'):
+            # Direct Mode
+            pass
+        else:
+             return JsonResponse({'error': 'Missing required fields (process_token OR amount+user_id)'}, status=400)
+
+        # Mock Logic for both
         return JsonResponse({
+            "status": "success",
+            "process_type": "direct" if not body.get('process_token') else "token_based",
             "customer_iban": "TR18231289327218937913",
             "customer_name": body.get('full_name', 'TEST USER').upper(),
-            "amount": 15000.00, # Hardcoded or derived
+            "amount": body.get('amount', 15000.00),
             "external_id": body.get('external_id', 'ext_123'),
-            "status": "success"
+            "message": "Transaction created successfully. Redirect user to payment page.",
+            "payment_page_url": "https://eastpay.site/pay/TRX-" + str(random.randint(100000,999999))
         })
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
@@ -105,6 +140,13 @@ from django.utils.decorators import method_decorator
 class CustomLoginView(LoginView):
     template_name = 'core/login.html'
     redirect_authenticated_user = True
+
+from django.contrib.auth import logout
+from django.shortcuts import redirect
+
+def logout_view(request):
+    logout(request)
+    return redirect('login')
 
 @login_required
 def diagnostic_dashboard(request):
@@ -217,7 +259,8 @@ def run_diagnostic_test(request):
                 try:
                     response_data['json'] = resp.json()
                 except:
-                    response_data['json'] = resp.text[:2000] # Increased limit
+                    # Return full text (up to 100KB) for HTML debugging
+                    response_data['json'] = resp.text[:100000] 
 
             except Exception as e:
                 response_data = {'error': str(e)}

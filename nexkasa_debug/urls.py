@@ -3,7 +3,7 @@ from django.urls import path
 from core.views import (
     debug_connection, diagnostic_dashboard, run_diagnostic_test, 
     mock_get_account, mock_create_transaction, mock_withdraw_request,
-    CustomLoginView
+    CustomLoginView, logout_view
 )
 from django.contrib.auth.views import LogoutView
 
@@ -12,7 +12,7 @@ urlpatterns = [
     
     # Auth
     path('', CustomLoginView.as_view(), name='login'),
-    path('logout/', LogoutView.as_view(next_page='login'), name='logout'),
+    path('logout/', logout_view, name='logout'), # Forced reload for logout fix
     
     # Dashboard & Runner
     path('diagnostics/', diagnostic_dashboard, name='dashboard'),
