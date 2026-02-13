@@ -3,12 +3,16 @@ from django.urls import path
 from core.views import (
     debug_connection, diagnostic_dashboard, run_diagnostic_test, 
     mock_get_account, mock_create_transaction, mock_withdraw_request,
-    CustomLoginView, logout_view
+    CustomLoginView, logout_view, webhook_listener, get_webhook_logs
 )
 from django.contrib.auth.views import LogoutView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
+    
+    # Webhook System (New)
+    path('api/webhook-listener/', webhook_listener, name='webhook_listener'),
+    path('api/get-webhook-logs/', get_webhook_logs, name='get_webhook_logs'),
     
     # Auth
     path('', CustomLoginView.as_view(), name='login'),

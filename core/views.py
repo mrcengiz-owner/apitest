@@ -269,3 +269,67 @@ def run_diagnostic_test(request):
 
     except Exception as e:
         return JsonResponse({'error': f"Internal Server Error: {str(e)}"}, status=500)
+
+# --- WEBHOOK SYSTEM ---
+from core.models import WebhookLog
+from django.utils import timezone
+
+@csrf_exempt
+def webhook_listener(request):
+    """
+    Endpoint that accepts ANY webhook and stores it for inspection.
+    URL: /api/webhook-listener/
+    """
+    try:
+        # Capture Data
+        client_ip = request.META.get('HTTP_CF_CONNECTING_IP') or request.META.get('REMOTE_ADDR')
+        # Simple header capture
+        headers = {}
+        for k, v in request.META.items():
+            if k.startswith('HTTP_') or k in ['CONTENT_TYPE', 'CONTENT_LENGTH']:
+                headers[k] = str(v)
+        
+        # Parse Body
+        body_data = {}
+        raw_body = ""
+        try:
+            raw_body = request.body.decode('utf-8', errors='ignore')
+            if raw_body:
+                body_data = json.loads(raw_body)
+        except:
+            pass # Keep empty if not JSON
+
+        # Save to DB
+        log = WebhookLog.objects.create(
+            sender_ip=client_ip,
+            method=request.method,
+            headers=headers,
+            body=body_data,
+            raw_body=raw_body
+        )
+        
+        return JsonResponse({"status": "received", "log_id": str(log.id)}, status=200)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
+
+@login_required
+def get_webhook_logs(request):
+    """
+    Returns the last 20 received webhooks for the dashboard UI.
+    URL: /api/get-webhook-logs/
+    """
+    try:
+        logs = WebhookLog.objects.all().order_by('-timestamp')[:20]
+        data = []
+        for log in logs:
+            data.append({
+                "id": str(log.id),
+                "timestamp": log.timestamp.strftime("%H:%M:%S"),
+                "method": log.method,
+                "body": log.body,
+                "headers": log.headers
+            })
+        return JsonResponse({"logs": data})
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
