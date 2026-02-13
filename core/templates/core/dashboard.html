@@ -251,7 +251,7 @@
                     { id: 'user_id', label: 'User ID', type: 'text', value: 'Testuser123', placeholder: 'Kullanıcı ID' },
                     { id: 'full_name', label: 'Ad Soyad', type: 'text', value: 'Test Kullanıcısı', placeholder: 'Ad Soyad' },
                     { id: 'external_id', label: 'External ID (Order ID)', type: 'text', value: 'order_' + Math.floor(Math.random()*10000), placeholder: 'Sipariş No' },
-                    { id: 'callback_url', label: 'Callback URL', type: 'text', value: 'https://1b5437124d7e90f69fe75edd94fab346.m.pipedream.net', placeholder: 'Webhook' }
+                    { id: 'callback_url', label: 'Callback URL', type: 'text', value: 'http://127.0.0.1:8000/api/webhook-listener/', placeholder: 'Webhook Adresi' }
                 ]
             },
             'create_transaction_direct': {
@@ -262,7 +262,7 @@
                     { id: 'user_id', label: 'User ID', type: 'text', value: 'USER_123451', placeholder: 'Kullanıcı ID' },
                     { id: 'full_name', label: 'Ad Soyad', type: 'text', value: 'Veysel Şahin', placeholder: 'Ad Soyad' },
                     { id: 'external_id', label: 'External ID', type: 'text', value: 'order_' + Math.floor(Math.random()*10000), placeholder: 'Sipariş No' },
-                    { id: 'callback_url', label: 'Callback URL', type: 'text', value: 'https://1b5437124d7e90f69fe75edd94fab346.m.pipedream.net', placeholder: 'Webhook' }
+                    { id: 'callback_url', label: 'Callback URL', type: 'text', value: 'http://127.0.0.1:8000/api/webhook-listener/', placeholder: 'Webhook Adresi' }
                 ]
             },
             'scenario_blocked_user': {
@@ -297,7 +297,8 @@
                     { id: 'customer_name', label: 'Alıcı Adı Soyadı', type: 'text', value: 'AHMET OOOOOO', placeholder: 'Kime' },
                     { id: 'customer_iban', label: 'IBAN', type: 'text', value: 'TR18231289327218937913', placeholder: 'TR...' },
                     { id: 'amount', label: 'Çekim Tutarı', type: 'number', value: 15000.00, placeholder: '15000.00' },
-                    { id: 'external_id', label: 'External ID', type: 'text', value: 'withdraw_' + Math.floor(Math.random()*10000), placeholder: 'İşlem No' }
+                    { id: 'external_id', label: 'External ID', type: 'text', value: 'withdraw_' + Math.floor(Math.random()*10000), placeholder: 'İşlem No' },
+                    { id: 'callback_url', label: 'Callback URL', type: 'text', value: 'http://127.0.0.1:8000/api/webhook-listener/', placeholder: 'Webhook Adresi' }
                 ]
             }
         };

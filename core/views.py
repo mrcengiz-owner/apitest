@@ -99,7 +99,7 @@ def mock_create_transaction(request):
              return JsonResponse({'error': 'Missing required fields (process_token OR amount+user_id)'}, status=400)
 
         # Mock Logic for both
-        return JsonResponse({
+        result_data = {
             "status": "success",
             "process_type": "direct" if not body.get('process_token') else "token_based",
             "customer_iban": "TR18231289327218937913",
@@ -108,7 +108,38 @@ def mock_create_transaction(request):
             "external_id": body.get('external_id', 'ext_123'),
             "message": "Transaction created successfully. Redirect user to payment page.",
             "payment_page_url": "https://eastpay.site/pay/TRX-" + str(random.randint(100000,999999))
-        })
+        }
+        
+        # --- TRIGGER LIVE CALLBACK SIMULATION ---
+        callback_url = body.get('callback_url')
+        if callback_url:
+            try:
+                # Prepare a realistic callback payload
+                callback_payload = {
+                    "event": "transaction.success",
+                    "transaction_id": "TRX-" + str(random.randint(100000, 999999)),
+                    "order_id": body.get('external_id'),
+                    "amount": body.get('amount'),
+                    "currency": "TRY",
+                    "status": "APPROVED",
+                    "timestamp": "2026-02-14T12:00:00Z"
+                }
+                
+                # Send async request (fire and forget simulation)
+                # Note: In production this would be celery, here we do sync for simplicity or start a thread
+                import threading
+                def send_webhook():
+                    try:
+                        import requests
+                        requests.post(callback_url, json=callback_payload, timeout=5)
+                    except:
+                        pass
+                threading.Thread(target=send_webhook).start()
+                
+            except Exception:
+                pass # Don't block main response
+
+        return JsonResponse(result_data)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
@@ -125,11 +156,44 @@ def mock_withdraw_request(request):
         if not body.get('customer_iban') or not body.get('amount'):
              return JsonResponse({'error': 'Missing required fields'}, status=400)
 
-        return JsonResponse({
+        # Mock Logic
+        result_data = {
             "status": "success",
             "message": "Withdraw request received",
             "transaction_id": f"W-{random.randint(10000,99999)}"
-        })
+        }
+
+        # --- TRIGGER LIVE CALLBACK SIMULATION (WITHDRAWAL) ---
+        callback_url = body.get('callback_url')
+        if callback_url:
+            try:
+                # Prepare a realistic withdrawal callback payload
+                callback_payload = {
+                    "event": "withdrawal.status",
+                    "transaction_id": result_data["transaction_id"],
+                    "external_id": body.get('external_id'),
+                    "amount": body.get('amount'),
+                    "currency": "TRY",
+                    "status": "PAID", # Simulating success
+                    "timestamp": "2026-02-14T12:05:00Z"
+                }
+                
+                # Send async request
+                import threading
+                def send_webhook():
+                    try:
+                        import requests
+                        import time
+                        time.sleep(2) # Slight delay for realism
+                        requests.post(callback_url, json=callback_payload, timeout=5)
+                    except:
+                        pass
+                threading.Thread(target=send_webhook).start()
+                
+            except Exception:
+                pass 
+
+        return JsonResponse(result_data)
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=400)
 
