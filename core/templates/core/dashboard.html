@@ -186,9 +186,14 @@
                     </div>
                     <h2 class="font-bold text-white">Webhook Inbox <span class="text-xs font-normal text-gray-400 ml-2">(Canlı Akış)</span></h2>
                 </div>
-                <button onclick="closeWebhookModal()" class="text-gray-400 hover:text-white transition-colors">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                </button>
+                <div class="flex items-center gap-3">
+                    <button onclick="simulateWebhook()" class="px-3 py-1.5 text-xs bg-gray-700 hover:bg-gray-600 text-white rounded border border-gray-600 transition-colors">
+                        🎲 Rastgele Test Verisi Gönder
+                    </button>
+                    <button onclick="closeWebhookModal()" class="text-gray-400 hover:text-white transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                    </button>
+                </div>
             </div>
 
             <!-- Modal Body -->
@@ -506,6 +511,30 @@
         function closeWebhookModal() {
             document.getElementById('webhookModal').classList.add('hidden');
             if (webhookInterval) clearInterval(webhookInterval);
+        }
+
+        async function simulateWebhook() {
+            // Send a fake webhook to our own listener
+            const fakePayload = {
+                event: "transaction.status",
+                transaction_id: "TRX-" + Math.floor(Math.random() * 100000),
+                status: Math.random() > 0.5 ? "success" : "failed",
+                amount: (Math.random() * 1000).toFixed(2),
+                currency: "TRY",
+                timestamp: new Date().toISOString()
+            };
+
+            try {
+                await fetch('/api/webhook-listener/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(fakePayload)
+                });
+                // Fetch immediately to show the new item
+                fetchWebhooks();
+            } catch (err) {
+                console.error("Simulation failed", err);
+            }
         }
 
         async function fetchWebhooks() {
