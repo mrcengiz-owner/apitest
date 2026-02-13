@@ -1,5 +1,6 @@
 import requests
 import json
+import random
 from django.conf import settings
 from django.shortcuts import render
 from django.http import JsonResponse
@@ -23,6 +24,89 @@ def debug_connection(request):
     }
     return JsonResponse(data)
 
+@csrf_exempt
+def mock_get_account(request):
+    """
+    Simulates: api/get-eligible-account/
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        body = json.loads(request.body)
+        amount = body.get('amount') # Should be string or number
+
+        # Mock Response
+        return JsonResponse({
+            "status": "success",
+            "process_token": f"{random.randint(1000,9999)}-{random.randint(1000,9999)}-{random.randint(1000,9999)}",
+            "banka_bilgileri": {
+                "banka_adi": "ZİRAAT",
+                "alici_adi": "AHMET MEHMET",
+                "iban": "TR450015700000000125414973"
+            }
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+def mock_create_transaction(request):
+    """
+    Simulates: api/create-transaction/
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        body = json.loads(request.body)
+        required = ['process_token', 'user_id', 'full_name', 'amount']
+        # Note: 'amount' might not be in the request body based on user prompt sample, 
+        # but user put it in the second block. I will just check basics.
+        
+        if not body.get('process_token'):
+             return JsonResponse({'error': 'Missing process_token'}, status=400)
+
+        # Mock Logic
+        return JsonResponse({
+            "customer_iban": "TR18231289327218937913",
+            "customer_name": body.get('full_name', 'TEST USER').upper(),
+            "amount": 15000.00, # Hardcoded or derived
+            "external_id": body.get('external_id', 'ext_123'),
+            "status": "success"
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+@csrf_exempt
+def mock_withdraw_request(request):
+    """
+    Simulates: api/public/withdraw-request/
+    """
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Method not allowed'}, status=405)
+    
+    try:
+        body = json.loads(request.body)
+        if not body.get('customer_iban') or not body.get('amount'):
+             return JsonResponse({'error': 'Missing required fields'}, status=400)
+
+        return JsonResponse({
+            "status": "success",
+            "message": "Withdraw request received",
+            "transaction_id": f"W-{random.randint(10000,99999)}"
+        })
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=400)
+
+from django.contrib.auth.views import LoginView
+from django.contrib.auth.decorators import login_required
+from django.utils.decorators import method_decorator
+
+class CustomLoginView(LoginView):
+    template_name = 'core/login.html'
+    redirect_authenticated_user = True
+
+@login_required
 def diagnostic_dashboard(request):
     """
     Renders the dashboard UI for running diagnostics.
@@ -32,8 +116,8 @@ def diagnostic_dashboard(request):
 def run_diagnostic_test(request):
     """
     Backend logic for running diagnostic tests via Python requests.
-    Now supports custom HTTP methods.
     """
+    # ... (rest of the function remains same)
     if request.method != 'POST':
         return JsonResponse({'error': 'Method not allowed'}, status=405)
 
@@ -54,8 +138,6 @@ def run_diagnostic_test(request):
         if test_type == 'browser':
             headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
             try:
-                # Use request() instead of get() to support dynamic methods if needed, though browser emulation usually implies GET navigation
-                # But for flexibility we use the passed method if provided, default to GET
                 resp = requests.request(http_method, target_url, headers=headers, json=payload, verify=verify_ssl, timeout=10)
                 response_data = {
                     'status_code': resp.status_code,
@@ -126,14 +208,19 @@ def run_diagnostic_test(request):
                     'status_code': resp.status_code,
                     'method_used': resp.request.method,
                     'headers_sent': dict(resp.request.headers),
-                    'elapsed': resp.elapsed.total_seconds(),
+                    'elapsed': resp.elapsed.total_seconds() * 1000, # ms
                     'response_headers': dict(resp.headers),
-                    'json': resp.json() if resp.status_code == 200 or resp.headers.get('Content-Type', '').startswith('application/json') else resp.text[:1000]
+                    # Try to parse JSON, if fails return text
+                    'json': None
                 }
+                
+                try:
+                    response_data['json'] = resp.json()
+                except:
+                    response_data['json'] = resp.text[:2000] # Increased limit
+
             except Exception as e:
                 response_data = {'error': str(e)}
-
-        return JsonResponse(response_data)
 
         return JsonResponse(response_data)
 
