@@ -246,7 +246,7 @@
                     { id: 'user_id', label: 'User ID', type: 'text', value: 'Testuser123', placeholder: 'Kullanıcı ID' },
                     { id: 'full_name', label: 'Ad Soyad', type: 'text', value: 'Test Kullanıcısı', placeholder: 'Ad Soyad' },
                     { id: 'external_id', label: 'External ID (Order ID)', type: 'text', value: 'order_' + Math.floor(Math.random()*10000), placeholder: 'Sipariş No' },
-                    { id: 'callback_url', label: 'Callback URL', type: 'text', value: 'https://webhook.site/test', placeholder: 'Webhook' }
+                    { id: 'callback_url', label: 'Callback URL', type: 'text', value: 'https://1b5437124d7e90f69fe75edd94fab346.m.pipedream.net', placeholder: 'Webhook' }
                 ]
             },
             'create_transaction_direct': {
@@ -257,7 +257,7 @@
                     { id: 'user_id', label: 'User ID', type: 'text', value: 'USER_123451', placeholder: 'Kullanıcı ID' },
                     { id: 'full_name', label: 'Ad Soyad', type: 'text', value: 'Veysel Şahin', placeholder: 'Ad Soyad' },
                     { id: 'external_id', label: 'External ID', type: 'text', value: 'order_' + Math.floor(Math.random()*10000), placeholder: 'Sipariş No' },
-                    { id: 'callback_url', label: 'Callback URL', type: 'text', value: 'https://webhook.site/test', placeholder: 'Webhook' }
+                    { id: 'callback_url', label: 'Callback URL', type: 'text', value: 'https://1b5437124d7e90f69fe75edd94fab346.m.pipedream.net', placeholder: 'Webhook' }
                 ]
             },
             'scenario_blocked_user': {
@@ -495,6 +495,7 @@
         
         // --- Webhook System ---
         let webhookInterval = null;
+        let webhookDataCache = {}; // Cache for logs
 
         function openWebhookModal() {
             document.getElementById('webhookModal').classList.remove('hidden');
@@ -519,26 +520,33 @@
 
         function renderWebhooks(logs) {
             const list = document.getElementById('webhookList');
-            const detail = document.getElementById('webhookDetail');
             
-            // Keep selected item visible if any
-            // For now, just rebuild list
+            // Store logs in cache
+            logs.forEach(log => webhookDataCache[log.id] = log);
+            
+            // Rebuild list
             list.innerHTML = logs.map(log => `
-                <div onclick="showWebhookDetail('${log.id}')" class="p-3 border-b border-gray-700 hover:bg-gray-700 cursor-pointer transition-colors group">
+                <div onclick="showWebhookDetail('${log.id}')" class="p-3 border-b border-gray-700 hover:bg-gray-700 cursor-pointer transition-colors group relative">
                     <div class="flex justify-between items-center mb-1">
                         <span class="text-xs font-bold text-accent">${log.method}</span>
                         <span class="text-[10px] text-gray-500">${log.timestamp}</span>
                     </div>
-                    <div class="text-[10px] text-gray-400 truncate font-mono">${JSON.stringify(log.body).substring(0,40)}...</div>
-                    <textarea id="data-${log.id}" class="hidden">${JSON.stringify(log, null, 4)}</textarea>
+                    <div class="text-[10px] text-gray-400 truncate font-mono">${JSON.stringify(log.body || {}).substring(0,40)}...</div>
+                    <div class="absolute inset-0 hover:bg-white/5 pointer-events-none"></div>
                 </div>
             `).join('');
         }
 
         function showWebhookDetail(id) {
-            const data = document.getElementById('data-' + id).value;
+            const log = webhookDataCache[id];
+            if (!log) return;
+
             const detailView = document.getElementById('webhookDetailContent');
-            detailView.innerHTML = syntaxHighlight(data);
+            
+            // Highlight active item (simple way: remove from all, add to current target if event passed, but here by ID)
+            // For now just show data
+            
+            detailView.innerHTML = syntaxHighlight(JSON.stringify(log, null, 4));
             document.getElementById('webhookDetailPlaceholder').classList.add('hidden');
             document.getElementById('webhookDetailView').classList.remove('hidden');
         }
