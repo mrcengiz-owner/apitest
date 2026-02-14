@@ -114,20 +114,34 @@ def mock_create_transaction(request):
         callback_url = body.get('callback_url')
         print(f"DEBUG: Processing Transaction. Callback URL: {callback_url}")
         
+        # Prepare a realistic callback payload
+        callback_payload = {
+            "event": "transaction.success",
+            "transaction_id": "TRX-" + str(random.randint(100000, 999999)),
+            "order_id": body.get('external_id'),
+            "amount": body.get('amount'),
+            "currency": "TRY",
+            "status": "APPROVED",
+            "timestamp": "2026-02-14T12:00:00Z"
+        }
+
+        # ALWAYS save callback to our local DB (Webhook Inbox)
+        try:
+            from core.models import WebhookLog
+            WebhookLog.objects.create(
+                sender_ip="SYSTEM (Callback Simulation)",
+                method="POST",
+                headers={"target": callback_url or "N/A", "type": "transaction.callback"},
+                body=callback_payload,
+                raw_body=json.dumps(callback_payload)
+            )
+            print("DEBUG: Callback saved to WebhookLog")
+        except Exception as e:
+            print(f"DEBUG: Failed to save callback to DB: {e}")
+
+        # ALSO send to external callback URL if provided
         if callback_url:
             try:
-                # Prepare a realistic callback payload
-                callback_payload = {
-                    "event": "transaction.success",
-                    "transaction_id": "TRX-" + str(random.randint(100000, 999999)),
-                    "order_id": body.get('external_id'),
-                    "amount": body.get('amount'),
-                    "currency": "TRY",
-                    "status": "APPROVED",
-                    "timestamp": "2026-02-14T12:00:00Z"
-                }
-                
-                # Send async request (fire and forget simulation)
                 import threading
                 def send_webhook():
                     try:
@@ -170,33 +184,50 @@ def mock_withdraw_request(request):
 
         # --- TRIGGER LIVE CALLBACK SIMULATION (WITHDRAWAL) ---
         callback_url = body.get('callback_url')
+        print(f"DEBUG: Processing Withdrawal. Callback URL: {callback_url}")
+
+        # Prepare a realistic withdrawal callback payload
+        callback_payload = {
+            "event": "withdrawal.status",
+            "transaction_id": result_data["transaction_id"],
+            "external_id": body.get('external_id'),
+            "amount": body.get('amount'),
+            "currency": "TRY",
+            "status": "PAID",
+            "timestamp": "2026-02-14T12:05:00Z"
+        }
+
+        # ALWAYS save callback to our local DB (Webhook Inbox)
+        try:
+            from core.models import WebhookLog
+            WebhookLog.objects.create(
+                sender_ip="SYSTEM (Withdrawal Callback)",
+                method="POST",
+                headers={"target": callback_url or "N/A", "type": "withdrawal.callback"},
+                body=callback_payload,
+                raw_body=json.dumps(callback_payload)
+            )
+            print("DEBUG: Withdrawal callback saved to WebhookLog")
+        except Exception as e:
+            print(f"DEBUG: Failed to save withdrawal callback to DB: {e}")
+
+        # ALSO send to external callback URL if provided
         if callback_url:
             try:
-                # Prepare a realistic withdrawal callback payload
-                callback_payload = {
-                    "event": "withdrawal.status",
-                    "transaction_id": result_data["transaction_id"],
-                    "external_id": body.get('external_id'),
-                    "amount": body.get('amount'),
-                    "currency": "TRY",
-                    "status": "PAID", # Simulating success
-                    "timestamp": "2026-02-14T12:05:00Z"
-                }
-                
-                # Send async request
                 import threading
                 def send_webhook():
                     try:
                         import requests
                         import time
-                        time.sleep(2) # Slight delay for realism
+                        time.sleep(2)
+                        print(f"DEBUG: Sending Withdrawal Webhook to {callback_url}")
                         requests.post(callback_url, json=callback_payload, timeout=5)
-                    except:
-                        pass
+                    except Exception as e:
+                        print(f"DEBUG: Withdrawal Webhook Failed: {e}")
                 threading.Thread(target=send_webhook).start()
                 
-            except Exception:
-                pass 
+            except Exception as e:
+                print(f"DEBUG: Withdrawal Callback Error: {e}")
 
         return JsonResponse(result_data)
     except Exception as e:

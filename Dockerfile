@@ -19,11 +19,14 @@ RUN pip install --upgrade pip && pip install -r requirements.txt
 # Copy project
 COPY . /app/
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
+# Make entrypoint executable
+RUN chmod +x /app/entrypoint.sh
+
+# Create persistent data directory for SQLite
+RUN mkdir -p /data
 
 # Expose port
 EXPOSE 8000
 
-# Run gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "nexkasa_debug.wsgi:application"]
+# Use entrypoint script (handles migrate + createsuperuser + collectstatic + gunicorn)
+ENTRYPOINT ["/app/entrypoint.sh"]
