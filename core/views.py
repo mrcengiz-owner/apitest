@@ -112,6 +112,8 @@ def mock_create_transaction(request):
         
         # --- TRIGGER LIVE CALLBACK SIMULATION ---
         callback_url = body.get('callback_url')
+        print(f"DEBUG: Processing Transaction. Callback URL: {callback_url}")
+        
         if callback_url:
             try:
                 # Prepare a realistic callback payload
@@ -126,21 +128,24 @@ def mock_create_transaction(request):
                 }
                 
                 # Send async request (fire and forget simulation)
-                # Note: In production this would be celery, here we do sync for simplicity or start a thread
                 import threading
                 def send_webhook():
                     try:
                         import requests
-                        requests.post(callback_url, json=callback_payload, timeout=5)
-                    except:
-                        pass
+                        print(f"DEBUG: Sending Async Webhook to {callback_url}")
+                        resp = requests.post(callback_url, json=callback_payload, timeout=5)
+                        print(f"DEBUG: Webhook Result: {resp.status_code} - {resp.text[:50]}")
+                    except Exception as e:
+                        print(f"DEBUG: Webhook Failed: {e}")
+
                 threading.Thread(target=send_webhook).start()
                 
-            except Exception:
-                pass # Don't block main response
+            except Exception as e:
+                print(f"DEBUG: Main Thread Webhook Error: {e}")
 
         return JsonResponse(result_data)
     except Exception as e:
+        print(f"DEBUG: Transaction Error: {e}")
         return JsonResponse({'error': str(e)}, status=400)
 
 @csrf_exempt
@@ -345,6 +350,7 @@ def webhook_listener(request):
     URL: /api/webhook-listener/
     """
     try:
+        print(f"DEBUG: Listener hit by {request.method}")
         # Capture Data
         client_ip = request.META.get('HTTP_CF_CONNECTING_IP') or request.META.get('REMOTE_ADDR')
         # Simple header capture
@@ -363,6 +369,8 @@ def webhook_listener(request):
         except:
             pass # Keep empty if not JSON
 
+        print(f"DEBUG: Webhook Body: {body_data}")
+
         # Save to DB
         log = WebhookLog.objects.create(
             sender_ip=client_ip,
@@ -371,10 +379,12 @@ def webhook_listener(request):
             body=body_data,
             raw_body=raw_body
         )
+        print(f"DEBUG: Webhook Saved ID: {log.id}")
         
         return JsonResponse({"status": "received", "log_id": str(log.id)}, status=200)
 
     except Exception as e:
+        print(f"DEBUG: Listener Error: {e}")
         return JsonResponse({"error": str(e)}, status=500)
 
 @login_required
@@ -394,6 +404,8 @@ def get_webhook_logs(request):
                 "body": log.body,
                 "headers": log.headers
             })
+        print(f"DEBUG: Returning {len(data)} webhook logs")
         return JsonResponse({"logs": data})
     except Exception as e:
+        print(f"DEBUG: Get Webhook Logs Error: {e}")
         return JsonResponse({"error": str(e)}, status=500)
